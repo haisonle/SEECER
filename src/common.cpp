@@ -33,7 +33,7 @@ char Complement(char c) {
 bool DiscardRead(const DnaString& read) {
   int nA = 0;
   int nT = 0;
-  for (int i = 0; i < length(read); ++i) {
+  for (unsigned i = 0; i < length(read); ++i) {
     
     if ((int) read[i] == NDNA)
       return true;

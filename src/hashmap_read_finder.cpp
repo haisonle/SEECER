@@ -140,7 +140,8 @@ void QGramHashMapReadFinder::AddReadToIndex(ulong i, std::set<uint64_t>& local_g
 
     // std::cerr << "Contruct gram set: " << s;
 
-    for (int k = 0; k < length(fragStore.readSeqStore[i]); ++k) {
+    for (int k = 0; k < static_cast<int>(length(fragStore.readSeqStore[i]));
+	 ++k) {
 	char letter = (int) fragStore.readSeqStore[i][k];
 	
 	if (letter == NDNA) {
@@ -288,7 +289,7 @@ void QGramHashMapReadFinder::GetReads(int cluster_id,
 	uint64_t r_gram = 0;
 
 	start = MAX(0, start);
-	end = MIN(end, length(core));
+	end = MIN(end, static_cast<int>(length(core)));
 
 	int k = start;
 	for (; k < start + rnaseq_k - 1; ++k) {
@@ -298,7 +299,7 @@ void QGramHashMapReadFinder::GetReads(int cluster_id,
 	}
 	
 	for (; k < end; ++k) {
-	    assert(k < length(core));
+	    assert(k < static_cast<int>(length(core)));
 	    char letter = (int) core[k];
 	    
 	    UpdateGram(letter, gram, r_gram);
@@ -346,19 +347,20 @@ void QGramHashMapReadFinder::GetReads(int cluster_id,
 		    
 		    if (stats_keeper.ReadUsefull(cluster_id, id)
 			&& (loc < 0 
-			    || (loc + length(fragStore.readSeqStore[id]) > core_len))
+			    || (loc + static_cast<int>(length(fragStore.readSeqStore[id])) > core_len))
 			) {
 			if (read_set.find(id) == read_set.end()) {
 			    bool overlapGood = true;
 			    
 			    if (core_len > 0) {
 				DnaString read = fragStore.readSeqStore[id];
-				if (id != nid) {
+				if (static_cast<int>(id) != nid) {
 				    reverseComplement(read);
 				}
 				
 				int b = MAX(0, INDELS - loc);
-				int e = MIN(length(read), core_len - loc - INDELS);
+				int e = MIN(static_cast<int>(length(read)),
+					    core_len - loc - INDELS);
 				if (e > b) {
 				    read = infix(read, b, e);
 				    overlapGood = 

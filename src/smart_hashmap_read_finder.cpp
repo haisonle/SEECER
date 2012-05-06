@@ -160,8 +160,6 @@ void QGramSmartHashMapReadFinder::AddReadToIndex(ulong i, std::set<uint64_t>& lo
     uint64_t r_gram = 0;
     local_gram_set.clear();
 
-    int total_c = 0;
-
     // std::cerr << "Contruct gram set: " << s;
 
     for (int k = 0; k < static_cast<int>(length(fragStore.readSeqStore[i])); ++k) {
@@ -187,9 +185,11 @@ void QGramSmartHashMapReadFinder::AddReadToIndex(ulong i, std::set<uint64_t>& lo
 		    if(grammap.find(lookup) != grammap.end()) {
 		      
 		      if (grammap[lookup].count >= grammap[lookup].max_count) {
-			std::cerr << "ERROR " << GramToString(gram) << " "
+			std::cerr << "ERROR!!!! " << GramToString(gram) << " "
 				  << GramToString(r_gram) << " "
 				  << grammap[lookup].count << std::endl;
+			std::cerr << "Kmer count is not correct. Sorry we have to crash!"
+				  << std::endl;
 			exit(1);
 		      }
 		      
@@ -268,7 +268,7 @@ void QGramSmartHashMapReadFinder::BuildIndex(const char* qgram_count_f) {
       
     }
 
-    int32_t n_total_count = 0;
+    uint64_t n_total_count = 0;
     for (__gnu_cxx::hash_map<uint64_t, s_map_struct>::iterator it = grammap.begin(); it != grammap.end(); ++it) {
 	n_total_count += it->second.count;
     }
@@ -300,7 +300,7 @@ void QGramSmartHashMapReadFinder::GetReads(int cluster_id,
 	uint64_t r_gram = 0;
     
 	start = MAX(0, start);
-	end = MIN(end, length(core));
+	end = MIN(end, static_cast<int>(length(core)));
 	
 	assert(static_cast<size_t>(core_len) <= length(core)
 	       && static_cast<size_t>(end) <= length(core)
@@ -339,8 +339,8 @@ void QGramSmartHashMapReadFinder::GetReads(int cluster_id,
 	    
 	    // std::cerr << "Looking up " << lookup << " " << GramToString(lookup) << " found " << read_ids.count << std::endl;
 	    
-	    for (ulong i = 0; i < read_ids.count; ++i) {
-		ulong id = read_ids.ids[i];
+	    for (int i = 0; i < read_ids.count; ++i) {
+		int id = read_ids.ids[i];
 	    
 		//std::cerr << "Finding overlap " << fragStore.readSeqStore[id] << "(" << id << ")" << std::endl;
 		int nid, loc;
@@ -369,12 +369,12 @@ void QGramSmartHashMapReadFinder::GetReads(int cluster_id,
 			
 			if (core_len > 0) {
 			    DnaString read = fragStore.readSeqStore[id];
-			    if (id != nid) {
+			    if (static_cast<int>(id) != nid) {
 				reverseComplement(read);
 			    }
 			    
 			    int b = MAX(0, INDELS - loc);
-			    int e = MIN(length(read), core_len - loc - INDELS);
+			    int e = MIN(static_cast<int>(length(read)), core_len - loc - INDELS);
 			    if (e > b) {
 				read = infix(read, b, e);
 				overlapGood = 

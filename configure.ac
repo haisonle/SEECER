@@ -1,9 +1,12 @@
 AC_INIT([seecer], [1.0], [hple@cs.cmu.edu,mschulz@cs.cmu.edu])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+AM_INIT_AUTOMAKE([-Wall -Werror subdir-objects  foreign])
+
+: ${CXXFLAGS=""}
 AC_PROG_CXX
+
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
-	src/Makefile
+	Makefile
 ])
 
 AC_OPENMP
@@ -15,9 +18,9 @@ AC_CHECK_LIB([gslcblas],[cblas_dgemm])
 AC_CHECK_LIB([gsl],[gsl_blas_dgemm])
 AC_ARG_WITH([seqan-include-path],
   [AS_HELP_STRING([--seqan-include-path],
-    [location of the SeqAn headers, default to ../../seqan-1.3.1/])],
+    [location of the SeqAn headers, default to seqan-cxx/])],
   [SEQAN_CFLAGS="-I$withval"],
-  [SEQAN_CFLAGS='-I../../seqan-1.3.1/'])
+  [SEQAN_CFLAGS='-Iseqan-cxx/'])
 AC_SUBST(SEQAN_CFLAGS)
 
 AC_OUTPUT

@@ -1,0 +1,57 @@
+---------------------------------------------------------------
+SEECER: SEquencing Error CorrEction for Rna-Seq data
+Probabilistic error correction in de novo RNA sequencing
+---------------------------------------------------------------
+Hai-Son Le (hple@cs.cmu.edu)
+Marcel Schulz (maschulz@cs.cmu.edu)
+Ziv Bar-Joseph (zivbj@cs.cmu.edu)
+
+Requirements:
+1. JellyFish
+2. SeqAn
+
+Installation:
+1. Compile JellyFish
+cd jellyfish-1.1.4/
+./configure
+make
+
+2. Compile SEECER:
+cd SEECER 
+./configure
+make
+
+3. Usage:
+We provide 2 test datasets:
+
+ * Large dataset from SRR027877 from www.ncbi.nlm.nih.gov/sra/SRX011546 (Illumina
+   sequencing of Human CD4 T cells RNA-Seq paired-end library)
+    - Run using only Read 1
+   ./bin/run_seecer.sh testdata/SRR027877-p1.fasta	      
+    - Run with two pairs of all reads
+   ./bin/run_seecer.sh testdata/SRR027877-p1.fasta testdata/SRR027877-p2.fasta
+
+ * Small dataset (first 25000 pairs of the large dataset)
+   ./bin/run_seecer.sh   testdata/SRR027877-small-p1.fastq testdata/SRR027877-small-p2.fastq
+
+
+   The corrected reads are store in the files *_corrected.fa
+
+
+Licenses:
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+

@@ -83,6 +83,31 @@ bool ReadFastaFiles(THMMFragStore& fragStore,
     return true;
 }
 
+
+void help_msg() {
+    const char* msg =
+	"SEECER: SEquencing Error CorrEction for Rna-Seq data\n"
+	"seecer [options] read1 [read2]\n"
+	"--------------------------------------------\n"
+	" read1, read2: are Fasta/Fastaq files.\n"
+	"        If only read1 is provided, the reads are considered singles."
+        "        Otherwise, read1 and read2 are paired-end reads."
+        " *** Important ***:\n"
+        " Reads should not contain Ns. Please use the provided run_seecer.sh \n"
+        " script to handle Ns.\n"
+	"--------------------------------------------\n"
+	"Options:\n"
+	" --kmer <k> : specify a different K value (default = 17).\n"
+	" --kmerCount <f> : specify the file containing kmer counts. This file\n"
+	"        is produced by JellyFish, we provided a Bash script to generate this file (run_seecer.sh).\n"
+        "        If the parameter is not set, SEECER will count kmers by itself\n"
+	"        (slower and memory-inefficient).\n"
+	" --clusterLLH <e> : specify a different log likelihood threshold (default = -1).\n"
+	" --entropy <e> : specify a different entropy threshold (default = 0.6).\n"
+	" --help, -h : this help message.\n";
+    fprintf(stderr, "%s\n", msg);
+}
+
 int correct_errors(int argc, char * argv[])
 {
     HMMParameters param;
@@ -92,7 +117,7 @@ int correct_errors(int argc, char * argv[])
     param.m = Emission::m;
     param.alpha = Emission::alpha;
 
-    param.pseudo = 1.005;
+    param.pseudo = 0.01;
     
     param.Init[STATEM] = log(0.8);
     param.Init[STATEI] = log(0.1);
@@ -110,15 +135,16 @@ int correct_errors(int argc, char * argv[])
     param.Trans[STATED][STATEI] = log(0.0);
     param.Trans[STATED][STATED] = log(0.05);
 
-    param.k = 20;
+    param.k = 17;
 
-    param.entropy_th = 1;
+    param.entropy_th = 0.6;
     param.cluster_llh_th = -1;
     param.do_em = false;
-    param.restrict_failures = false;
+    param.restrict_failures = true;
     param.reuse_reads = true;
-    param.do_read_thinning = false;
-    param.rthgTh = 10;
+    param.do_read_thinning = true;
+    // Threadshold to do read-thinning
+    param.rthgTh = 0;
 
 
     param.sim_coefficient = 10;
@@ -126,8 +152,8 @@ int correct_errors(int argc, char * argv[])
     param.max_core_errors = 5;
     param.max_pre_corrected_errors = 10;
     param.max_corrections_per_read = 5;
-    param.failure_th = 10;
-    param.emit_delta = 0.00;
+    param.failure_th = 3;
+    param.emit_delta = 0.01;
 
     char *kmerFn = NULL;
     char *debugPath = NULL;
@@ -146,11 +172,12 @@ int correct_errors(int argc, char * argv[])
 	static struct option long_options[] =
 	    {
 		{"verbose", no_argument, 0, 'v'},
+		{"help", no_argument, 0, 'h'},
 		{"doEM", no_argument, 0, 'm'},
 		{"do-read-thinning", no_argument, 0, 't'},
 		{"rthgTh", required_argument, 0, '6'},
 		{"no-reuse-reads", no_argument, 0, 'r'},
-		{"no-failure", no_argument, 0, 'f'},
+		{"allow-failures", no_argument, 0, 'f'},
 		{"kmerCount", required_argument, 0, 'k'},
 		{"kmer", required_argument, 0, '5'},
 		{"entropy", required_argument, 0, 'E'},
@@ -169,7 +196,7 @@ int correct_errors(int argc, char * argv[])
 	    };
 	int option_index = 0;
 	
-	c = getopt_long (argc, argv, "vk:E:C:d:o:p:",
+	c = getopt_long (argc, argv, "vk:E:C:d:o:p:h",
 			 long_options, &option_index);
 	/* Detect the end of the options. */
            if (c == -1)
@@ -197,6 +224,7 @@ int correct_errors(int argc, char * argv[])
 	    param.pseudo = atof(optarg);
 	    break;
 	case '2':
+	    param.restrict_failures = true;
 	    param.failure_th = atoi(optarg);
 	    break;
 	case '3':
@@ -221,10 +249,10 @@ int correct_errors(int argc, char * argv[])
 	    param.do_read_thinning = true;
 	    break;
 	case 'r':
-	    param.reuse_reads = false;
+	    param.reuse_reads = true;
 	    break;
 	case 'f':
-	    param.restrict_failures = true;
+	    param.restrict_failures = false;
 	    break;
 	case 'k':
 	    kmerFn = optarg;
@@ -242,11 +270,16 @@ int correct_errors(int argc, char * argv[])
 	    outputFn = optarg;
 	    break;
 	case 'p':
-	    omp_set_num_threads(atoi(optarg));
+	    // Do not set more than 8
+	    omp_set_num_threads(MIN(8, atoi(optarg)));
 	    break;
 	case 'S':
 	    stats_suffix = optarg;
             break;
+	case 'h':
+	    help_msg();
+	    exit(0);
+	    break;
 	default:
 	    printf("Too many arguments\n");
 	    return -1; //abort()
@@ -270,7 +303,8 @@ int correct_errors(int argc, char * argv[])
     } else if (optind == argc - 2) {
 	ReadFastaFiles(fragStore, argv[optind], argv[optind+1]);
     } else {
-	printf("Too many arguments\n");
+	// print help
+	help_msg();
 	return -1;
     }
 
@@ -309,7 +343,6 @@ int correct_errors(int argc, char * argv[])
 
     SEQAN_PROTIMESTART(total_correction);
 
-    for (int rr = 0; rr < 1; rr++) {
 #pragma omp parallel
     {
 #pragma omp for
@@ -332,21 +365,25 @@ int correct_errors(int argc, char * argv[])
 		}
 		
 		Cluster res;
-		
+
+		bool interesting_c =
+		    cluster.BuildCluster(fragStore.readSeqStore[ridx], res, ridx, debugPath);
+		cluster.ReportPerf();
+		n_clusters++;
+
+		// dummy
+		interesting_c = interesting_c;
+
 		SEQAN_PROTIMESTART(correction);
-		
-		    bool interesting_c =
-			cluster.BuildCluster(fragStore.readSeqStore[ridx], res, ridx, debugPath);
-		    cluster.ReportPerf();
-		    
 #if DEBUG
-		    //std::cerr << "Time required for execution: " << SEQAN_PROTIMEDIFF(correction) << " seconds." << std::endl;
+		//std::cerr << "Time required for execution: "
+		//          << SEQAN_PROTIMEDIFF(correction) << " seconds." << std::endl;
 #endif
 		    
 #if DEBUG  
 		    {
+
 #pragma omp atomic
-			n_clusters++;
 			// outputing core
 			if (debugPath && res.rthread.reads.size() > 0
 			    && interesting_c) {
@@ -371,13 +408,7 @@ int correct_errors(int argc, char * argv[])
 	
     }
     
-    std::cerr << "============== Round " << rr << " ============"
-	      << std::endl;
     stats_keeper.PrintStats();
-    
-    }
-
-
 
     std::cerr << "Total Reads: " << length(fragStore.readSeqStore)
 	      << std::endl;

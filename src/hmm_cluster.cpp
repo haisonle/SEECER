@@ -671,7 +671,7 @@ bool HMMCluster::Viterbi(DnaString& core,
 		      buffer_length, read, estAlignment);
     
     
-    double max_v = -INF; int b_state; int b_o;
+    double max_v = -INF; int b_state = -1; int b_o = -1;
     for (int o = 0 ; o < TOTAL_OFFSETS; ++o) {
 	for (int s = 0; s < N_HSTATES; ++s) {
 	    if (alpha_array[len].v[o][s] > max_v) {
@@ -893,7 +893,7 @@ bool HMMCluster::EstimateErrors(Emission* buffer,
 		      buffer_length, read, estAlignment);
     
     
-    double max_v = -INF; int b_state; int b_o;
+    double max_v = -INF; int b_state = -1; int b_o = -1;
     for (int o = 0 ; o < TOTAL_OFFSETS; ++o) {
 	for (int s = 0; s < N_HSTATES; ++s) {
 	    if (alpha_array[len].v[o][s] > max_v) {
@@ -969,7 +969,7 @@ bool HMMCluster::BuildErrorProfilesHelper(DnaString& core,
 		      buffer_length, read, estAlignment);
     
     
-    double max_v = -INF; int b_state; int b_o;
+    double max_v = -INF; int b_state = -1; int b_o = -1;
     for (int o = 0 ; o < TOTAL_OFFSETS; ++o) {
 	for (int s = 0; s < N_HSTATES; ++s) {
 	    if (alpha_array[len].v[o][s] > max_v) {
@@ -1295,7 +1295,9 @@ int HMMCluster::FilterReads(ReadThread& rthread,
 	    }
 #endif
 
-	    /*if (nclusters > 0 /*nclusters > 1 && nclusters < size)*/ {
+	    // if (nclusters > 0)
+            // if (nclusters > 1 && nclusters < size)
+	    {
 		// Constructing X^t
 		gsl_matrix *X = gsl_matrix_alloc(nclusters, size);
 		for (int i = 0; i < nclusters; ++i) {
@@ -1401,7 +1403,8 @@ int HMMCluster::FilterReads(ReadThread& rthread,
 			}
 		    }
 		    int th = MIN(3, 0.5 * sets[i].size());
-		    for (int i = 0; i < rthread.reads.size(); ++i) {
+		    for (int i = 0; i < static_cast<int>(rthread.reads.size());
+			 ++i) {
 			if (errors_count[i] > th) {
 			    if (!mask[i]) {
 				/*
@@ -1508,7 +1511,7 @@ int HMMCluster::FilterReads(ReadThread& rthread,
 	    ++i;
 	}
 
-	assert(count + i == rthread.reads.size());
+	assert(count + i == static_cast<int>(rthread.reads.size()));
 
 	// reporting this read as failure
 	if (param->restrict_failures) {
@@ -1537,14 +1540,16 @@ int HMMCluster::FilterReads(ReadThread& rthread,
 		      << std::endl;
 	    */
 	    int m = rthread.estAlign[0];
-	    for (int i = 1; i < rthread.estAlign.size() - count; ++i) {
+	    for (int i = 1; i < static_cast<int>(rthread.estAlign.size())
+		     - count; ++i) {
 		if (rthread.estAlign[i] > m) {
 		    m = rthread.estAlign[i];
 		}
 	    }
 
 	    
-	    for (int i = 0; i < rthread.estAlign.size(); ++i) {
+	    for (int i = 0; i < static_cast<int>(rthread.estAlign.size());
+		 ++i) {
 		rthread.estAlign[i] -=  m;
 	    }
 
@@ -1567,7 +1572,7 @@ void HMMCluster::GatherInitialReads(int cluster_id,
 				    Emission* buffer,
 				    int buffer_iter,
 				    int buffer_length) {
-    if (length(seed) < param->k) {
+    if (static_cast<int>(length(seed)) < param->k) {
 	return;
     }
 
@@ -1633,7 +1638,7 @@ void HMMCluster::EMLearning(gsl_rng *& r,
 	// step-wise EM
 	int iter_read = 0;
 	
-	while (iter_read < rthread.estAlign.size()) {
+	while (iter_read < static_cast<int>(rthread.estAlign.size())) {
 	    int pi = gsl_permutation_get(p, iter_read);
 	    DnaString& read = rthread.RComplement[pi];
 
@@ -1760,8 +1765,7 @@ int HMMCluster::ExtendRight(DnaString& core,
 				 int buffer_iter,
 				 int buffer_length,
 				 ostream* os) {
-    int olength = length(core);
-    double entropy;
+double entropy;
     Dna s;
     int ext = 0;
     // Post-Core
@@ -1821,7 +1825,7 @@ int HMMCluster::AssignReads(int cluster_id,
      // Accepting reads that belongs to this clusters wholely	
      SEQAN_PROTIMESTART(viterbi);
      
-     for (int i = 0; i < rthread.estAlign.size(); ++i) {
+     for (int i = 0; i < static_cast<int>(rthread.estAlign.size()); ++i) {
  #if DEBUG
 	 std::cerr << rthread.reads[i] << "\t";
  #endif
@@ -2000,13 +2004,13 @@ bool HMMCluster::BuildCluster(const DnaString& baseread,
 	 PrintReads(rthread, outfile);
  #endif
 
-	 for (int i = 0; i < rthread.estAlign.size(); ++i) {
+	 for (int i = 0; i < static_cast<int>(rthread.estAlign.size()); ++i) {
 	     int len = length(rthread.RComplement[i]);
 	     PaddingBases(rthread.estAlign[i], len);
 	 }
 
 	 bool do_thinning = param->do_read_thinning
-	     && (rthread.reads.size() > param->rthgTh);
+	     && (static_cast<int>(rthread.reads.size()) > param->rthgTh);
 
 	 if (do_thinning) {
 	     PopulateEmission(rthread, main_core, main_pos,
@@ -2015,7 +2019,6 @@ bool HMMCluster::BuildCluster(const DnaString& baseread,
 			      true, true, outfile);
 	     
 	     int removed;
-	     int filter_rounds = 0;
 	     removed = FilterReads(rthread, main_core, main_pos,
 				   emission_buffer, it_emission_buffer,
 				   length_emission_buffer, outfile);
@@ -2102,7 +2105,7 @@ bool HMMCluster::BuildCluster(const DnaString& baseread,
 	   break;
 	 }
 
-	 if (length(main_core) > extended_left_length
+	 if (static_cast<int>(length(main_core)) > extended_left_length
 	     + extended_right_length + 2 * BUFFER_SEGMENT) {
 	   split_extend = true;
 	   break;
@@ -2110,8 +2113,8 @@ bool HMMCluster::BuildCluster(const DnaString& baseread,
 
 	 int idx[] = {0,
 		      MIN(extended_left_length + param->k - 1,
-			  length(main_core)),
-		      MAX(0, ((int)length(main_core))
+			  static_cast<int>(length(main_core))),
+		      MAX(0, static_cast<int>(length(main_core))
 			  - extended_right_length - param->k + 1),
 		      length(main_core)};
 
@@ -2190,7 +2193,8 @@ bool HMMCluster::BuildCluster(const DnaString& baseread,
 #endif
 		 
 		 
-		 for (int i = 0; i < rthread.estAlign.size(); ++i) {
+		 for (int i = 0; i < static_cast<int>(rthread.estAlign.size());
+		      ++i) {
 		     int len = length(rthread.RComplement[i]);
 		     
 		     PaddingBasesLeftOnly(rthread.estAlign[i], len);
@@ -2202,7 +2206,8 @@ bool HMMCluster::BuildCluster(const DnaString& baseread,
 				length_emission_left_buffer);
 		 */
 		 bool do_thinning = param->do_read_thinning
-		     && (rthread.reads.size() > param->rthgTh);
+		     && (static_cast<int>(rthread.reads.size())
+			 > param->rthgTh);
 		 
 		 if (do_thinning) {
 		     PopulateEmission(rthread, left_core, left_pos,
@@ -2352,14 +2357,16 @@ bool HMMCluster::BuildCluster(const DnaString& baseread,
 #endif
 
 
-		 for (int i = 0; i < rthread.estAlign.size(); ++i) {
+		 for (int i = 0; i < static_cast<int>(rthread.estAlign.size());
+		      ++i) {
 		     int len = length(rthread.RComplement[i]);
 		     
 		     PaddingBasesRightOnly(rthread.estAlign[i], len);
 		 }
 		 
 		 bool do_thinning = param->do_read_thinning
-		     && (rthread.reads.size() > param->rthgTh);
+		     && (static_cast<int>(rthread.reads.size())
+			 > param->rthgTh);
 		 /*	 
 		 PrintEmissions(emission_right_buffer,
 				it_emission_right_buffer,
