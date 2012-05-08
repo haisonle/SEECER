@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "read_finder.h"
 #include <fstream>
 #include <set>
-#include <ext/hash_map>
+#include <tr1/unordered_map>
 #include <vector>
 
 #define BIT_SHIFT 2
@@ -79,7 +79,7 @@ private:
 
     int max_read_length;
 
-    __gnu_cxx::hash_map<uint64_t, s_map_struct> grammap;
+    std::tr1::unordered_map<uint64_t, s_map_struct> grammap;
 
     uint64_t mask;
     

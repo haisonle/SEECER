@@ -41,7 +41,7 @@ QGramHashMapReadFinder::~QGramHashMapReadFinder() {
     if (extra_bits > 0) {
 	for (int ext = 0; ext < 1<<extra_bits; ++ext) {
 	    
-	    for (__gnu_cxx::hash_map<uint64_t, map_struct>::iterator it = grammap[ext].begin(); it != grammap[ext].end(); ++it) {
+	  for (std::tr1::unordered_map<uint64_t, map_struct>::iterator it = grammap[ext].begin(); it != grammap[ext].end(); ++it) {
 		delete[] it->second.ids;
 		delete[] it->second.positions;
 	    }
@@ -196,7 +196,7 @@ void QGramHashMapReadFinder::BuildIndex() {
     int gram_size = 0;
 
     std::cerr << "Extra # bits = " << extra_bits << std::endl;
-    grammap = new __gnu_cxx::hash_map<uint64_t, map_struct>[1 << extra_bits];
+    grammap = new std::tr1::unordered_map<uint64_t, map_struct>[1 << extra_bits];
 
 
     // TODO: This can be parallelized
@@ -239,7 +239,7 @@ void QGramHashMapReadFinder::BuildIndex() {
     
     uint64_t total_count = 0;
     for (int ext = 0; ext < 1<<extra_bits; ++ext) {
-	for (__gnu_cxx::hash_map<uint64_t, map_struct>::iterator it = grammap[ext].begin(); it != grammap[ext].end(); ++it) {
+      for (std::tr1::unordered_map<uint64_t, map_struct>::iterator it = grammap[ext].begin(); it != grammap[ext].end(); ++it) {
 	    // std::cerr << "Gram: " << it->first << " " << it->second.count << std::endl;
 	    it->second.ids = new uint32_t[it->second.count];
 	    it->second.positions = new char[it->second.count];

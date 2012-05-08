@@ -90,8 +90,8 @@ void help_msg() {
 	"seecer [options] read1 [read2]\n"
 	"--------------------------------------------\n"
 	" read1, read2: are Fasta/Fastaq files.\n"
-	"        If only read1 is provided, the reads are considered singles."
-        "        Otherwise, read1 and read2 are paired-end reads."
+	"        If only read1 is provided, the reads are considered singles.\n"
+        "        Otherwise, read1 and read2 are paired-end reads.\n"
         " *** Important ***:\n"
         " Reads should not contain Ns. Please use the provided run_seecer.sh \n"
         " script to handle Ns.\n"
@@ -99,7 +99,7 @@ void help_msg() {
 	"Options:\n"
 	" --kmer <k> : specify a different K value (default = 17).\n"
 	" --kmerCount <f> : specify the file containing kmer counts. This file\n"
-	"        is produced by JellyFish, we provided a Bash script to generate this file (run_seecer.sh).\n"
+	"        is produced by JELLYFISH, we provided a Bash script to generate this file (run_seecer.sh).\n"
         "        If the parameter is not set, SEECER will count kmers by itself\n"
 	"        (slower and memory-inefficient).\n"
 	" --clusterLLH <e> : specify a different log likelihood threshold (default = -1).\n"
@@ -357,10 +357,12 @@ int correct_errors(int argc, char * argv[])
 		    char *s = ctime_r(&tim, otime);
 		    s[strlen(s) - 1] = '\0'; 
 		    
-		    std::cerr << "Baseread " << ridx << std::endl;
-		    std::cerr << s << " " << tim << " Processed " << stats_keeper.NumProcessedReads() << " " << stats_keeper.NumCollidedReads() << " "
-			      << n_clusters+skipped << "/" << endSeed - startSeed
-			      << " = " << (double) (n_clusters+skipped) / (endSeed - startSeed) << " " << std::endl;
+		    // std::cerr << "Baseread " << ridx << std::endl;
+		    std::cerr << s << " (" << tim << ") \n Assigned " 
+			      << stats_keeper.NumProcessedReads() << " reads, " << stats_keeper.NumCollidedReads() << " collisions, ";
+		    std::cerr << "Processed " << n_clusters+skipped << "/" << endSeed - startSeed
+			      << " seeds = " << (double) (n_clusters+skipped) / (endSeed - startSeed) * 100
+			      << " % complete" << std::endl;
 		    
 		}
 		
@@ -415,9 +417,12 @@ int correct_errors(int argc, char * argv[])
     std::cerr << "Skipped: " << skipped << std::endl;
 
     //cluster.PrintStats();
+#ifdef SEQAN_PROFILE
+    std::cerr << "*** Total time required for execution: " <<
+	SEQAN_PROTIMEDIFF(total_correction) << " seconds." << std::endl;
+#endif
 
-    std::cerr << "*** Total time required for execution: " << SEQAN_PROTIMEDIFF(total_correction) << " seconds." << std::endl;
-    std::cerr << "*** " << n_clusters << " cores." << std::endl;
+    std::cerr << "*** Total " << n_clusters << " contigs." << std::endl;
     
     /*
     for (unsigned long i = 0; i < all_cores.size(); ++i) {
@@ -431,10 +436,10 @@ int correct_errors(int argc, char * argv[])
 	if (stats_keeper.ReadAccepted(t)) {
 	    s = stats_keeper.GetReads(t);
 	    if (s) {
-		output << ">" << fragStore.readNameStore[t] << "<#%" << std::endl;
+		output << ">" << fragStore.readNameStore[t] << "<Corrected" << std::endl;
 		output << *s << std::endl;
 	    } else {
-		output << ">" << fragStore.readNameStore[t] << "<#" << std::endl;
+		output << ">" << fragStore.readNameStore[t] << "<Assigned" << std::endl;
 		output << fragStore.readSeqStore[t] << std::endl;
 	    }
 	} else {

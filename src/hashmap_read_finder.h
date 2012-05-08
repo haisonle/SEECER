@@ -22,8 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "common.h"
 #include "read_finder.h"
 #include "stats_keeper.h"
+#include <tr1/unordered_map>
 
-#include <ext/hash_map>
 #include <fstream>
 #include <set>
 #include <vector>
@@ -76,7 +76,7 @@ private:
     
     int max_read_length;
 
-    __gnu_cxx::hash_map<uint64_t, map_struct>* grammap;
+    std::tr1::unordered_map<uint64_t, map_struct>* grammap;
 
     void UpdateGram(char letter, uint64_t& gram, uint64_t& r_gram);
     void ConstructGramSet(const DnaString& s, std::set<uint64_t>& local_gram_set);

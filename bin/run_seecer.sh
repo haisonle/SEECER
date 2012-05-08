@@ -19,7 +19,7 @@
 # This script runs the SEECER pipeline of 4 steps:
 #
 # 1. Replace Ns and strip off read IDs (to save memory).
-# 2. Run JellyFish to count kmers.
+# 2. Run JELLYFISH to count kmers.
 # 3. Correct errors with SEECER.
 # 4. Clean up and put back original read IDs.
 #
@@ -31,13 +31,13 @@ K=17
 SEECER_PARAMS=""
 SeecerStep=1
 LCOUNT=3
-TMPDIR=./
+TMPDIR=''
 
 usage=$(cat << EOF
    # This script runs the SEECER pipeline of 4 steps:
    #
    # 1. Replace Ns and strip off read IDs (to save memory).
-   # 2. Run JellyFish to count kmers.
+   # 2. Run JELLYFISH to count kmers.
    # 3. Correct errors with SEECER.
    # 4. Clean up and put back original read IDs.
    
@@ -48,9 +48,9 @@ usage=$(cat << EOF
           Otherwise, read1 and read2 are paired-end reads.
 
    Options:
+      -t <v> : *required* specify a temporary working directory.
       -k <v> : sepcify a different K value (fefault = 17).
-      -t <v> : specify a temproray working directory (default = ./).
-      -j <v> : specify the location of Jellyfish binary (default = $JF).
+      -j <v> : specify the location of JELLYFISH binary (default = $JF).
       -p <v> : specify extra SEECER parameters (default = '').
       -s <v> : specify the starting step ( default = 1). Values = 1,2,3,4.
       -h : help message
@@ -92,6 +92,13 @@ done
 
 shift $(($OPTIND - 1))
 
+if [ -z "$TMPDIR" ];
+then
+    echo "Missing -t parameter: please specify a temporaty working directory to store JELLYFISH output.";
+    exit 1;
+fi
+
+
 Read1=$1
 Read2=$2
 
@@ -117,7 +124,7 @@ then
 fi;
 
 echo "K is set to $K" >&2
-echo "JellyFish bin is set to $JF" >&2
+echo "JELLYFISH bin is set to $JF" >&2
 echo "SEECER parameters: $SEECER_PARAMS" >&2
 echo "Starting SEECER from step: $SeecerStep" >&2
 
@@ -138,36 +145,40 @@ echo "------------------------" >&2
 # Output: for each read files a temp file
 if [ $SeecerStep -le 1 ];
 then
-    echo "Step 1: Replacing Ns ... and stripping off read IDs"
+    echo "++ Step 1: Replacing Ns ... and stripping off read IDs"
+    echo
     ${BINDIR}/random_sub_N $RS_ARGS
 fi;
 
-# 2. Running JellyFish to count kmers
+# 2. Running JELLYFISH to count kmers
 # Output: counts_$SeecerK file
 
 if [ $SeecerStep -le 2 ];
 then
-    echo "Step 2: Running JellyFish to count kmers ..."
-    bash ${BINDIR}/run_jellyfish.sh $JF $TMPDIR/counts_${K}_${LCOUNT} $K $LCOUNT $Read1_N $Read2_N
+    echo "++ Step 2: Running JELLYFISH to count kmers ..."
+    echo
+    bash ${BINDIR}/run_jellyfish.sh $JF $TMPDIR/counts_${K}_${LCOUNT} $K $LCOUNT $TMPDIR $Read1_N $Read2_N
 fi;
 
 # 3. Seecer main part: correcting errrors
 # Output: corrected.fa
 if [ $SeecerStep -le 3 ];
 then
-    echo "Step 3: Correcting errors with SEECER ... Your reads are in good hands!"
+    echo "++ Step 3: Correcting errors with SEECER ... Your reads are in good hands!"
+    echo "-----------------------------------------------------------------------"
+    echo " *** Start time: " `date`;
 
-    date
     ${BINDIR}/seecer $Read1_N $Read2_N $SEECER_PARAMS --kmer $K -k $TMPDIR/counts_${K}_${LCOUNT} -o $TMPDIR/corrected.fasta
-    date
-    sleep 3
+    echo " *** End time: " `date`;
+    echo "-----------------------------------------------------------------------"
+    echo
 fi;
 
 # 4. Put back the original read IDs
 # Output:
 if [ $SeecerStep -le 4 ];
 then
-    echo "Step 4: Cleaning and putting back original read IDs ... We finish soon!"
+    echo "++ Step 4: Cleaning and putting back original read IDs ... We finish soon!"
     ${BINDIR}/replace_ids $TMPDIR/corrected.fasta $Reads $Reads_N $Reads_O
     rm $TMPDIR/corrected.fasta
 fi;

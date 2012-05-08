@@ -742,9 +742,9 @@ bool HMMCluster::Viterbi(DnaString& core,
 		// only correct if the margin of correction is at least 0.1
 		// (allows SNP)
 		&& exp(buffer[(idx + buffer_iter)
-			      % buffer_length].s[read[i - 1]])
+			    % buffer_length].s[static_cast<int>(read[i - 1])])
 		<= exp(buffer[(idx + buffer_iter) % buffer_length]
-		       .s[core[idx - pos.core_emission_offset]])
+		       .s[static_cast<int>(core[idx - pos.core_emission_offset])])
 		- param->emit_delta
 		) {
 

@@ -74,7 +74,7 @@ void StatsKeeper::PrintStats() const {
 	      << " Insertions: " << g_ins_errors
 	      << std::endl;
     std::cout << nAcceptedReads << " "
-	     << nCorrectedReads;
+	      << nCorrectedReads << std::endl;
 }
 
 bool StatsKeeper::InterestingRead(int read_id) {

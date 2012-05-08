@@ -38,7 +38,7 @@ QGramSmartHashMapReadFinder::QGramSmartHashMapReadFinder(const char* qgram_count
 QGramSmartHashMapReadFinder::~QGramSmartHashMapReadFinder() {
     
     
-    for (__gnu_cxx::hash_map<uint64_t, s_map_struct>::iterator it = grammap.begin(); it != grammap.end(); ++it) {
+    for (std::tr1::unordered_map<uint64_t, s_map_struct>::iterator it = grammap.begin(); it != grammap.end(); ++it) {
 	delete[] it->second.ids;
 	delete[] it->second.positions;
     }
@@ -269,7 +269,7 @@ void QGramSmartHashMapReadFinder::BuildIndex(const char* qgram_count_f) {
     }
 
     uint64_t n_total_count = 0;
-    for (__gnu_cxx::hash_map<uint64_t, s_map_struct>::iterator it = grammap.begin(); it != grammap.end(); ++it) {
+    for (std::tr1::unordered_map<uint64_t, s_map_struct>::iterator it = grammap.begin(); it != grammap.end(); ++it) {
 	n_total_count += it->second.count;
     }
     if (n_total_count > total_count) {
