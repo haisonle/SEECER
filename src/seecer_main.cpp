@@ -414,7 +414,6 @@ int correct_errors(int argc, char * argv[])
 
     std::cerr << "Total Reads: " << length(fragStore.readSeqStore)
 	      << std::endl;
-    std::cerr << "Skipped: " << skipped << std::endl;
 
     //cluster.PrintStats();
 #ifdef SEQAN_PROFILE
@@ -468,6 +467,6 @@ int main(int argc, char * argv[]) {
     if (omp_get_nested()) {
 	std::cerr << "NESTED THREADS supported" << std::endl;
     }
-    
+    omp_set_num_threads(MIN(8, omp_get_max_threads()));
     correct_errors(argc, argv);
 }

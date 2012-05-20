@@ -49,7 +49,7 @@ usage=$(cat << EOF
 
    Options:
       -t <v> : *required* specify a temporary working directory.
-      -k <v> : sepcify a different K value (fefault = 17).
+      -k <v> : specify a different K value (default = 17).
       -j <v> : specify the location of JELLYFISH binary (default = $JF).
       -p <v> : specify extra SEECER parameters (default = '').
       -s <v> : specify the starting step ( default = 1). Values = 1,2,3,4.

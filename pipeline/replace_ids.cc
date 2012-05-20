@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
 		rridx++;
 	    } while (!b);
 
-	    fprintf(output[fi], ">%s%s\n%s\n", an, id, seqc);
+	    fprintf(output[fi], ">%s %s\n%s\n", id, an, seqc);
 	}
 
 	ridx = rid+1;
