@@ -1,6 +1,6 @@
 AM_LDFLAGS = -lgomp
-AM_CPPFLAGS = -Wno-deprecated -Wall -Werror $(SEQAN_CFLAGS) -fopenmp
-AM_CXXFLAGS = -g -O3
+AM_CPPFLAGS = -Wno-deprecated -Wall $(SEQAN_CFLAGS) -fopenmp
+AM_CXXFLAGS = -O3 -g
 
 bin_PROGRAMS = bin/seecer \
 	bin/random_sub_N \

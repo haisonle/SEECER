@@ -1402,7 +1402,7 @@ int HMMCluster::FilterReads(ReadThread& rthread,
 			    }
 			}
 		    }
-		    int th = MIN(3, 0.5 * sets[i].size());
+		    int th = MIN(3, static_cast<int>(0.5 * sets[i].size()));
 		    for (int i = 0; i < static_cast<int>(rthread.reads.size());
 			 ++i) {
 			if (errors_count[i] > th) {

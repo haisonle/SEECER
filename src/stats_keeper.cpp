@@ -99,45 +99,49 @@ bool StatsKeeper::RemoveReads(int cluster_id,
     } else {
     }
 
-#pragma omp critical (STATS_KEEPER)
-{
-    if (g_hs[read_index]) {
+
+    if (__sync_bool_compare_and_swap(&g_hs[read_index], 0, cluster_id + 1)) {
+	if (c != fragStore.readSeqStore[read_index]) {
+#pragma omp critical
+	    {
+		corrected_reads.push_back(c);
+		creads_index[read_index] = corrected_reads.size();
+	    }
+	    AcceptNewRead(true);
+	} else {
+	    AcceptNewRead(false);
+	}
+    } else {
+	
+	
         bool matched;
 	if (creads_index[read_index]) {
 	    matched = corrected_reads[creads_index[read_index] - 1] == c;
 	} else {
 	    matched = fragStore.readSeqStore[read_index] == c;
-
+	    
 	}
+#pragma omp atomic
 	g_ncollisions[read_index]++;
 	CollidedRead(matched);
 	ret = false;
-    } else {
-
-	g_hs[read_index] = cluster_id + 1;
-	if (c != fragStore.readSeqStore[read_index]) {
-	    corrected_reads.push_back(c);
-	    creads_index[read_index] = corrected_reads.size();
-	    AcceptNewRead(true);
-	} else {
-	    AcceptNewRead(false);
-	}
     }
- }
-
- return ret;
+    
+    return ret;
 }
 
 void StatsKeeper::ReportFailure(int read_index) {
     read_index = read_index < 0 ? -read_index - 1 : read_index;
 
-#pragma omp critical
-    {
-    if (g_failures[read_index] < 0xff) {
-	g_failures[read_index]++;
+    unsigned char v = g_failures[read_index];
 
+    while (v < param->failure_th) {
+	unsigned char nv = __sync_val_compare_and_swap(&g_failures[read_index], v, v+1);
+	if (nv == v)
+	    break;
+	v = nv;
     }
-    }
+
 }
 
 bool StatsKeeper::ReadAccepted(int read_index) {
@@ -146,24 +150,21 @@ bool StatsKeeper::ReadAccepted(int read_index) {
 
 bool StatsKeeper::ReadUsefull(int cluster_id, int read_index) {
     bool ret;
-#pragma omp critical (STATS_KEEPER)
-    {
-	ret = (g_failures[read_index] < param->failure_th) &&
-	    param->reuse_reads ? g_hs[read_index] != cluster_id+1 : g_hs[read_index] == 0;
-    }
+    
+    ret = (g_failures[read_index] < param->failure_th) &&
+	param->reuse_reads ? g_hs[read_index] != cluster_id+1 : g_hs[read_index] == 0;
+
     return ret;
 }
 
 
 bool StatsKeeper::FreeRead(int read_index) {
     bool ret;
-#pragma omp critical (STATS_KEEPER)
-{
+
     read_index = read_index < 0 ? -read_index - 1 : read_index;
 
     ret = g_hs[read_index] == 0
 	&& g_failures[read_index] < param->failure_th;
-}
 
     return ret;
 }

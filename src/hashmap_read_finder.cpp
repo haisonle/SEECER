@@ -191,7 +191,7 @@ void QGramHashMapReadFinder::BuildIndex() {
 
     std::set<uint64_t> local_gram_set;
 
-    extra_bits = MAX(ceil(log2(length(fragStore.readSeqStore))) - 32, 0);
+    extra_bits = MAX(static_cast<int> (log2(length(fragStore.readSeqStore)) + 0.5) - 32, 0);
 
     int gram_size = 0;
 

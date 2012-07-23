@@ -225,7 +225,7 @@ int correct_errors(int argc, char * argv[])
 	    break;
 	case '2':
 	    param.restrict_failures = true;
-	    param.failure_th = atoi(optarg);
+	    param.failure_th = MIN(0xff, atoi(optarg));
 	    break;
 	case '3':
 	    param.emit_delta = atof(optarg);
@@ -271,7 +271,8 @@ int correct_errors(int argc, char * argv[])
 	    break;
 	case 'p':
 	    // Do not set more than 8
-	    omp_set_num_threads(MIN(8, atoi(optarg)));
+	    // omp_set_num_threads(MIN(8, atoi(optarg)));
+	    omp_set_num_threads(atoi(optarg));
 	    break;
 	case 'S':
 	    stats_suffix = optarg;
@@ -318,11 +319,9 @@ int correct_errors(int argc, char * argv[])
 	finder = new QGramHashMapReadFinder(fragStore, stats_keeper, param.k);	
     }
 
-#if DEBUG
     if (interestingFn) {
 	stats_keeper.ReadIReads(interestingFn);
     }
-#endif
 
     SEQAN_PROTIMESTART(constructQgramExt);
 
@@ -467,6 +466,6 @@ int main(int argc, char * argv[]) {
     if (omp_get_nested()) {
 	std::cerr << "NESTED THREADS supported" << std::endl;
     }
-    omp_set_num_threads(MIN(8, omp_get_max_threads()));
+    // omp_set_num_threads(MIN(8, omp_get_max_threads()));
     correct_errors(argc, argv);
 }

@@ -28,7 +28,6 @@ QGramSmartHashMapReadFinder::QGramSmartHashMapReadFinder(const char* qgram_count
       readCount(length(fragStore.readSeqStore)),
       retrieved_count(static_cast<int*>(calloc(readCount, sizeof(int)))),
       max_read_length(0),
-      grammap(NULL),
       mask((1ULL << rnaseq_k * BIT_SHIFT) - 1) {
     SEQAN_PROTIMESTART(build_index);
     BuildIndex(qgram_count_f);
@@ -179,31 +178,27 @@ void QGramSmartHashMapReadFinder::AddReadToIndex(ulong i, std::set<uint64_t>& lo
 	    }
 
 	    if (local_gram_set.find(lookup) == local_gram_set.end()) {
-
-		//#pragma omp critical
-		{
-		    if(grammap.find(lookup) != grammap.end()) {
-		      
-		      if (grammap[lookup].count >= grammap[lookup].max_count) {
+		if(grammap.find(lookup) != grammap.end()) {
+		    
+		    if (grammap[lookup].count >= grammap[lookup].max_count) {
 			std::cerr << "ERROR!!!! " << GramToString(gram) << " "
 				  << GramToString(r_gram) << " "
 				  << grammap[lookup].count << std::endl;
 			std::cerr << "Kmer count is not correct. Sorry we have to crash!"
 				  << std::endl;
 			exit(1);
-		      }
-		      
-		      assert(grammap[lookup].count >=0);
-		      grammap[lookup].ids[grammap[lookup].count] = i;
-		      if (lookup == gram) {
-			grammap[lookup].positions[grammap[lookup].count++] = k + 1;
-		      } else {
-			grammap[lookup].positions[grammap[lookup].count++] = -(k + 1);
-		      }		 
 		    }
 		    
-		    local_gram_set.insert(lookup);
+		    assert(grammap[lookup].count >=0);
+		    grammap[lookup].ids[grammap[lookup].count] = i;
+		    if (lookup == gram) {
+			grammap[lookup].positions[grammap[lookup].count++] = k + 1;
+		    } else {
+			grammap[lookup].positions[grammap[lookup].count++] = -(k + 1);
+		    }		 
 		}
+		
+		local_gram_set.insert(lookup);
 	    }
 	
 	} // end getting all grams

@@ -1,5 +1,5 @@
-AC_INIT([seecer], [1.0], [hple@cs.cmu.edu,mschulz@cs.cmu.edu])
-AM_INIT_AUTOMAKE([-Wall -Werror subdir-objects  foreign])
+AC_INIT([seecer], [1.0], [hple@cs.cmu.edu,maschulz@cs.cmu.edu])
+AM_INIT_AUTOMAKE([-Wall subdir-objects  foreign])
 AC_PREREQ(2.62)
 
 : ${CXXFLAGS=""}
