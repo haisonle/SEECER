@@ -89,6 +89,7 @@ using namespace seqan;
 
 char Complement(char c);
 bool DiscardRead(const DnaString& read);
+bool DiscardKmer(const char* read);
 
 typedef seqan::FragmentStore<> THMMFragStore;
 
@@ -153,5 +154,6 @@ typedef struct cluster_ {
 	::clear(core);
     }
 } Cluster;
+
 
 #endif

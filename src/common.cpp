@@ -16,7 +16,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "common.h"
 
-
 char Complement(char c) {
     c = toupper(c);
 
@@ -45,4 +44,20 @@ bool DiscardRead(const DnaString& read) {
   }
 
   return (nA > length(read) * 0.7) || (nT > length(read) * 0.7);
+}
+
+bool DiscardKmer(const char* read) {
+  int nA = 0;
+  int nT = 0;
+  int n = 0;
+  while (*read != '\0') {
+
+    if (*read == 'A')
+      ++nA;
+    if (*read == 'T')
+      ++nT;
+    n++; read++;
+  }
+
+  return ((nA > n * 0.9) || (nT > n * 0.9));
 }

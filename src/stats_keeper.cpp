@@ -27,7 +27,7 @@ StatsKeeper::StatsKeeper(HMMParameters *param, THMMFragStore& fragStore)
       readCount(length(fragStore.readSeqStore)),
       g_hs(static_cast<int*>(calloc(readCount, sizeof(int)))),
       g_failures(static_cast<unsigned char*>(calloc(readCount, sizeof(unsigned char)))),
-      g_ncollisions(static_cast<int*>(calloc(readCount, sizeof(int)))),
+      // g_ncollisions(static_cast<int*>(calloc(readCount, sizeof(int)))),
       creads_index(static_cast<int*>(calloc(readCount, sizeof(int)))),
       nAcceptedReads(0),
       nCollidedReads(0),
@@ -35,12 +35,14 @@ StatsKeeper::StatsKeeper(HMMParameters *param, THMMFragStore& fragStore)
       nCorrectedReads(0),
       g_sub_errors(0),
       g_ins_errors(0),
-      g_del_errors(0) {
+      g_del_errors(0),
+      g_nfailures(0) {
 }
 
 StatsKeeper::~StatsKeeper() {
     free(g_hs);
     free(g_failures);
+    free(creads_index);
 }
 
 void StatsKeeper::AcceptNewRead(bool corrected) {
@@ -104,8 +106,8 @@ bool StatsKeeper::RemoveReads(int cluster_id,
 	if (c != fragStore.readSeqStore[read_index]) {
 #pragma omp critical
 	    {
-		corrected_reads.push_back(c);
-		creads_index[read_index] = corrected_reads.size();
+	      corrected_reads.push_back(c);
+	      creads_index[read_index] = corrected_reads.size();
 	    }
 	    AcceptNewRead(true);
 	} else {
@@ -116,13 +118,14 @@ bool StatsKeeper::RemoveReads(int cluster_id,
 	
         bool matched;
 	if (creads_index[read_index]) {
-	    matched = corrected_reads[creads_index[read_index] - 1] == c;
+	  matched = (corrected_reads[creads_index[read_index] - 1]) == c;
 	} else {
-	    matched = fragStore.readSeqStore[read_index] == c;
-	    
+	  matched = (fragStore.readSeqStore[read_index] == c);
 	}
+	/*
 #pragma omp atomic
-	g_ncollisions[read_index]++;
+        g_ncollisions[read_index]++;
+	*/
 	CollidedRead(matched);
 	ret = false;
     }
@@ -134,14 +137,21 @@ void StatsKeeper::ReportFailure(int read_index) {
     read_index = read_index < 0 ? -read_index - 1 : read_index;
 
     unsigned char v = g_failures[read_index];
+    unsigned char nv;
 
-    while (v < param->failure_th) {
-	unsigned char nv = __sync_val_compare_and_swap(&g_failures[read_index], v, v+1);
-	if (nv == v)
-	    break;
+    if (v < param->failure_th) {
+      
+      while (v < param->failure_th) {
+	nv = __sync_val_compare_and_swap(&g_failures[read_index], v, v+1);
+	if (nv == v || nv == param->failure_th)
+	  break;
 	v = nv;
+      }
+      
+      if (nv == param->failure_th - 1)
+#pragma omp atomic
+	g_nfailures++;
     }
-
 }
 
 bool StatsKeeper::ReadAccepted(int read_index) {
@@ -188,20 +198,19 @@ void StatsKeeper::ReadIReads(const char* fn) {
 }
 
 const DnaString* StatsKeeper::GetReads(int read_index) {
-    if (creads_index[read_index]) {
-	return &corrected_reads[creads_index[read_index] - 1];
-    } else {
-        return NULL;
-    }
-
+  if (creads_index[read_index]) {
+    return &corrected_reads[creads_index[read_index] - 1];
+  } else {
+    return NULL;
+  }
 }
 
 void StatsKeeper::PrintStats(const char* fn) {
     FILE* f = fopen(fn, "w");
-
+    /*
     for (unsigned i = 0; i < length(fragStore.readSeqStore); ++i) {
         fprintf(f, "%u %d\n", i, g_ncollisions[i]);
     }    
-
+    */
     fclose(f);
 }

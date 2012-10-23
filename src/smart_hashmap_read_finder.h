@@ -84,9 +84,8 @@ private:
     uint64_t mask;
     
     void UpdateGram(char letter, uint64_t& gram, uint64_t& r_gram);
-    void ConstructGramSet(const DnaString& s, std::set<uint64_t>& local_gram_set);
     void BuildIndex(const char* qgram_count_f);
-    void AddReadToIndex(ulong i, std::set<uint64_t>& local_gram_set);
+    void AddReadToIndex(ulong i);
     DnaString GramToString(uint64_t gram);
     static const char codes[256];
     uint64_t GramToBinary(const char *in);

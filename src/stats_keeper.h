@@ -60,8 +60,8 @@ public:
       return nCollidedReads;
     }
 
-    const std::vector<DnaString>& GetCorrectedReads() {
-	return corrected_reads;
+    int NumFailures() {
+      return g_nfailures;
     }
 
     void UpdatePerf(int sub_errors, int ins_errors, int del_errors);
@@ -91,6 +91,8 @@ private:
     int g_ins_errors;
     int g_del_errors;
 
+    
+    int g_nfailures;
     // FOR DEBUG
     std::set<int> interesting_reads;
     

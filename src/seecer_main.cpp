@@ -34,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_randist.h>
 
+#include "common.h"
 #include "hashmap_read_finder.h"
 #include "hmm_cluster.h"
 #include "smart_hashmap_read_finder.h"
@@ -149,16 +150,17 @@ int correct_errors(int argc, char * argv[])
 
     param.sim_coefficient = 10;
     param.sim_th = 1e-2;
-    param.max_core_errors = 5;
-    param.max_pre_corrected_errors = 10;
-    param.max_corrections_per_read = 5;
+    param.max_core_errors = 5;//5
+    param.max_pre_corrected_errors = 10;//10
+    param.max_corrections_per_read = 5;//5
     param.failure_th = 3;
-    param.emit_delta = 0.01;
+    param.emit_delta = 0.1;
 
     char *kmerFn = NULL;
     char *debugPath = NULL;
     char *interestingFn = NULL;
     char *stats_suffix = NULL;
+    char *ctrlFn = NULL;
 
     const char *outputFn = static_cast<const char*>("corrected_reads.fa");
     int startSeed = -1;
@@ -192,6 +194,7 @@ int correct_errors(int argc, char * argv[])
 		{"eDelta", required_argument, 0, '3'},
 		{"dbReads", required_argument, 0, '4'},
 		{"stats_suffix", required_argument, 0, 'S'},
+		{"ctrlFn", required_argument, 0, 'c'},
 		{0, 0, 0, 0}
 	    };
 	int option_index = 0;
@@ -269,6 +272,9 @@ int correct_errors(int argc, char * argv[])
 	case 'o':
 	    outputFn = optarg;
 	    break;
+	case 'c':
+	    ctrlFn = optarg;
+	    break;
 	case 'p':
 	    // Do not set more than 8
 	    // omp_set_num_threads(MIN(8, atoi(optarg)));
@@ -319,9 +325,11 @@ int correct_errors(int argc, char * argv[])
 	finder = new QGramHashMapReadFinder(fragStore, stats_keeper, param.k);	
     }
 
+#if DEBUG
     if (interestingFn) {
 	stats_keeper.ReadIReads(interestingFn);
     }
+#endif
 
     SEQAN_PROTIMESTART(constructQgramExt);
 
@@ -342,48 +350,34 @@ int correct_errors(int argc, char * argv[])
 
     SEQAN_PROTIMESTART(total_correction);
 
+    bool abort = false;
+
 #pragma omp parallel
     {
 #pragma omp for
 	for (int ridx = startSeed; ridx < endSeed; ++ridx) {
-	    HMMCluster cluster(&param, *finder, stats_keeper,
-			       finder->GetMaximumReadLength(),
-			       Emission::alpha, Emission::m, fragStore);
-	    if (!DiscardRead(fragStore.readSeqStore[ridx]) && stats_keeper.FreeRead(ridx)) {
-		if (ridx % 1000 == 0) {
-		    char otime[256];
-		    time_t tim = time(NULL);
-		    char *s = ctime_r(&tim, otime);
-		    s[strlen(s) - 1] = '\0'; 
-		    
-		    // std::cerr << "Baseread " << ridx << std::endl;
-		    std::cerr << s << " (" << tim << ") \n Assigned " 
-			      << stats_keeper.NumProcessedReads() << " reads, " << stats_keeper.NumCollidedReads() << " collisions, ";
-		    std::cerr << "Processed " << n_clusters+skipped << "/" << endSeed - startSeed
-			      << " seeds = " << (double) (n_clusters+skipped) / (endSeed - startSeed) * 100
-			      << " % complete" << std::endl;
-		    
-		}
+	    if (!abort) {
+	      HMMCluster cluster(&param, *finder, stats_keeper,
+				 finder->GetMaximumReadLength(),
+				 Emission::alpha, Emission::m, fragStore);
+	      if (stats_keeper.FreeRead(ridx) && !DiscardRead(fragStore.readSeqStore[ridx])) {
 		
 		Cluster res;
-
+		
 		bool interesting_c =
-		    cluster.BuildCluster(fragStore.readSeqStore[ridx], res, ridx, debugPath);
+		  cluster.BuildCluster(fragStore.readSeqStore[ridx], res, ridx, debugPath);
 		cluster.ReportPerf();
 		n_clusters++;
-
+		
 		// dummy
 		interesting_c = interesting_c;
 
+#ifdef SEQAN_PROFILE
 		SEQAN_PROTIMESTART(correction);
-#if DEBUG
-		//std::cerr << "Time required for execution: "
-		//          << SEQAN_PROTIMEDIFF(correction) << " seconds." << std::endl;
 #endif
 		    
 #if DEBUG  
 		    {
-
 #pragma omp atomic
 			// outputing core
 			if (debugPath && res.rthread.reads.size() > 0
@@ -400,14 +394,33 @@ int correct_errors(int argc, char * argv[])
 		    }
 		
 #endif    
-		} else {
+	    } else {
+	        if (ridx % 1000 == 0) {
+		    char otime[256];
+		    time_t tim = time(NULL);
+		    char *s = ctime_r(&tim, otime);
+		    s[strlen(s) - 1] = '\0'; 
+		    
+		    // std::cerr << "Baseread " << ridx << std::endl;
+		    std::cerr << s << " (" << tim << ") \n Assigned " 
+			      << stats_keeper.NumProcessedReads() << " reads, " << stats_keeper.NumCollidedReads() << " collisions("
+			      << stats_keeper.NumFailures() << "), ";
+		    std::cerr << "Processed " << n_clusters+skipped << "/" << endSeed - startSeed
+			      << " seeds = " << (double) (n_clusters+skipped) / (endSeed - startSeed) * 100
+			      << " % complete" << std::endl;
+		    
+		    if (ctrlFn && fileExists(ctrlFn)) {
+		      abort = true;
+                      #pragma omp flush (abort)
+		    }
 
+		}
 #pragma omp atomic
 		skipped++;
-		}
+	      }
 	}
-	
-    }
+	}
+	}
     
     stats_keeper.PrintStats();
 
@@ -466,6 +479,6 @@ int main(int argc, char * argv[]) {
     if (omp_get_nested()) {
 	std::cerr << "NESTED THREADS supported" << std::endl;
     }
-    // omp_set_num_threads(MIN(8, omp_get_max_threads()));
+    omp_set_num_threads(MIN(8, omp_get_max_threads()));
     correct_errors(argc, argv);
 }

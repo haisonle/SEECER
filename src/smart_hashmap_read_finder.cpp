@@ -119,45 +119,12 @@ DnaString QGramSmartHashMapReadFinder::GramToString(uint64_t gram) {
     return t;
 }
 
-void QGramSmartHashMapReadFinder::ConstructGramSet(const DnaString& s, std::set<uint64_t>& local_gram_set) {
+void QGramSmartHashMapReadFinder::AddReadToIndex(ulong i) {
 
     int lastN = -1;
     uint64_t gram = 0;
     uint64_t r_gram = 0;
-    local_gram_set.clear();
-
-    // std::cerr << "Contruct gram set: " << s;
-
-    for (int k = 0; k < static_cast<int>(length(s)); ++k) {
-	char letter = (int) s[k];
-	
-	if (letter == NDNA) {
-	    lastN = k; 
-	}
-	
-	UpdateGram(letter, gram, r_gram);
-	
-	if (lastN <= (k - rnaseq_k)) {
-	    // add the gram
-	    if (gram < r_gram) {
-		local_gram_set.insert(gram);
-	    } else {
-		local_gram_set.insert(r_gram);
-	    }
-	}
-	
-    } // end getting all grams
-
-    // std::cerr << " " << local_gram_set.size() << std::endl;
-
-}
-
-void QGramSmartHashMapReadFinder::AddReadToIndex(ulong i, std::set<uint64_t>& local_gram_set) {
-
-    int lastN = -1;
-    uint64_t gram = 0;
-    uint64_t r_gram = 0;
-    local_gram_set.clear();
+    std::set<uint64_t> local_gram_set;
 
     // std::cerr << "Contruct gram set: " << s;
 
@@ -179,7 +146,7 @@ void QGramSmartHashMapReadFinder::AddReadToIndex(ulong i, std::set<uint64_t>& lo
 
 	    if (local_gram_set.find(lookup) == local_gram_set.end()) {
 		if(grammap.find(lookup) != grammap.end()) {
-		    
+
 		    if (grammap[lookup].count >= grammap[lookup].max_count) {
 			std::cerr << "ERROR!!!! " << GramToString(gram) << " "
 				  << GramToString(r_gram) << " "
@@ -189,12 +156,15 @@ void QGramSmartHashMapReadFinder::AddReadToIndex(ulong i, std::set<uint64_t>& lo
 			exit(1);
 		    }
 		    
-		    assert(grammap[lookup].count >=0);
-		    grammap[lookup].ids[grammap[lookup].count] = i;
+		    // Insert to the array
+		    int idx = __sync_fetch_and_add(&grammap[lookup].count, 1);
+
+		    assert(idx >=0);
+		    grammap[lookup].ids[idx] = i;
 		    if (lookup == gram) {
-			grammap[lookup].positions[grammap[lookup].count++] = k + 1;
+			grammap[lookup].positions[idx] = k + 1;
 		    } else {
-			grammap[lookup].positions[grammap[lookup].count++] = -(k + 1);
+			grammap[lookup].positions[idx] = -(k + 1);
 		    }		 
 		}
 		
@@ -212,8 +182,6 @@ void QGramSmartHashMapReadFinder::BuildIndex(const char* qgram_count_f) {
     
     // Counting the number of qgrams
 
-    std::set<uint64_t> local_gram_set;
-
     int gram_size = 0;
     uint64_t total_count = 0;
     // allocating space
@@ -229,13 +197,17 @@ void QGramSmartHashMapReadFinder::BuildIndex(const char* qgram_count_f) {
 	    std::cerr << "Processed " << gram_size << " grams" << std::endl;
 	}
 	fscanf(f, "%s %u\n", str, &count);
-	uint64_t hash = GramToBinary(str);
-	grammap[hash].max_count = count;
-	grammap[hash].count = 0;
-	grammap[hash].ids = new uint32_t[count];
-	grammap[hash].positions = new char[count];
-	gram_size++;
-	total_count += count;
+	if (!DiscardKmer(str)) {
+	  uint64_t hash = GramToBinary(str);
+	  grammap[hash].max_count = count;
+	  grammap[hash].count = 0;
+	  grammap[hash].ids = new uint32_t[count];
+	  grammap[hash].positions = new char[count];
+	  gram_size++;
+	  total_count += count;
+	} else {
+	  std::cerr << " SKIPPING " << str << std::endl;
+	}
     }
 
     fclose(f);
@@ -247,18 +219,18 @@ void QGramSmartHashMapReadFinder::BuildIndex(const char* qgram_count_f) {
     std::cerr << "Finding locations" << std::endl;
 
     // TODO: This can be parallelized    
-    //#pragma omp parallel for
-    for (ulong i = 0; i < length(fragStore.readSeqStore); ++i) {
-	if (i % 100000 == 0) {
-	    std::cerr << "Getting qgrams locations of " << i << " reads" << std::endl;
-	}
+#pragma omp parallel for
+    for (int i = 0; i < static_cast<int>(length(fragStore.readSeqStore)); ++i) {
+        if (i % 100000 == 0) {
+	  std::cerr << "Getting qgrams locations of " << i << " reads" << std::endl;
+        }
 
 	if (!DiscardRead(fragStore.readSeqStore[i])) {
 	    if (max_read_length < static_cast<int>(length(fragStore.readSeqStore[i]))) {
 		max_read_length = static_cast<int>(length(fragStore.readSeqStore[i]));
 	    }
 	    
-	    AddReadToIndex(i, local_gram_set);
+	    AddReadToIndex(i);
 	}
       
     }
