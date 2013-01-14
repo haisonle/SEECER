@@ -1705,12 +1705,13 @@ void HMMCluster::EMLearning(gsl_rng *& r,
 }
 
 int HMMCluster::ExtendLeft(DnaString& core,
-				PositionInfo& pos,
-				Emission* buffer,
-				int buffer_iter,
-				int buffer_length,
-				ostream* os) {
-    // Pre-Core
+			   Cluster& output,
+			   PositionInfo& pos,
+			   Emission* buffer,
+			   int buffer_iter,
+			   int buffer_length,
+			   ostream* os) {
+  // Pre-Core
     int o = pos.core_emission_offset - 1;
     double entropy;
     DnaString a;
@@ -1737,7 +1738,16 @@ int HMMCluster::ExtendLeft(DnaString& core,
 				% buffer_length].entropy)
 	   <= param->entropy_th) {
 	a += buffer[(o + buffer_iter) % buffer_length].letter;
-	--o;pos.core_emission_offset--;
+
+	// Add to probablity
+	if (output.core_prob.size() < 200) {
+	  CoreCount c;
+	  c.Assign( buffer[(o + buffer_iter) % buffer_length].c, buffer[(o + buffer_iter) % buffer_length].entropy);
+	  output.core_prob.push_front(c);
+	}
+	--o; pos.core_emission_offset--;
+
+
 	/*
 	if (os) {
 	  // *os << s << "(" << entropy <<") ";
@@ -1760,11 +1770,12 @@ int HMMCluster::ExtendLeft(DnaString& core,
 }
 
 int HMMCluster::ExtendRight(DnaString& core,
-				 PositionInfo& pos,
-				 Emission* buffer,
-				 int buffer_iter,
-				 int buffer_length,
-				 ostream* os) {
+			    Cluster& output,
+			    PositionInfo& pos,
+			    Emission* buffer,
+			    int buffer_iter,
+			    int buffer_length,
+			    ostream* os) {
 double entropy;
     Dna s;
     int ext = 0;
@@ -1791,8 +1802,17 @@ double entropy;
 				% buffer_length].entropy)
 	   <= param->entropy_th) {
 	core += buffer[(i + buffer_iter) % buffer_length].letter;
+
+	// Add to probability
+	if (output.core_prob.size() < 200) {
+	  CoreCount c;
+	  c.Assign(buffer[(i + buffer_iter) % buffer_length].c, buffer[(i + buffer_iter) % buffer_length].entropy);
+	  output.core_prob.push_back(c);
+	}
 	i++;
 	ext++;
+
+
 	/*
 	  if (os) {
 	    // *os << s << "(" << entropy <<") ";
@@ -2060,10 +2080,10 @@ bool HMMCluster::BuildCluster(const DnaString& baseread,
 	 // CheckCoreCoherence();
 
 	 extended_left_length =
-	     ExtendLeft(main_core, main_pos, emission_buffer,
+	   ExtendLeft(main_core, output, main_pos, emission_buffer,
 			it_emission_buffer, length_emission_buffer, outfile);
 	 extended_right_length =
-	     ExtendRight(main_core, main_pos, emission_buffer,
+	     ExtendRight(main_core, output, main_pos, emission_buffer,
 			 it_emission_buffer, length_emission_buffer, outfile);
 
 	 if (outfile) {
@@ -2261,7 +2281,7 @@ bool HMMCluster::BuildCluster(const DnaString& baseread,
 
 		 
 		 extended_left_length =
-		     ExtendLeft(left_core, left_pos, emission_left_buffer,
+		     ExtendLeft(left_core, output, left_pos, emission_left_buffer,
 				it_emission_left_buffer,
 				length_emission_left_buffer, outfile);
 		 if (outfile) {
@@ -2421,7 +2441,7 @@ bool HMMCluster::BuildCluster(const DnaString& baseread,
 		 
 
 		 extended_right_length =
-		     ExtendRight(right_core, right_pos,
+		     ExtendRight(right_core, output, right_pos,
 				 emission_right_buffer,
 				 it_emission_right_buffer,
 				 length_emission_right_buffer, outfile);
@@ -2640,7 +2660,9 @@ void HMMCluster::PrintEmissionEntropy() {
 // saving time by buffer this?
 inline double MultiWeight(int m) {
     // std::cerr << 1.00 / (1 + exp( -(m-3))) << " " ;
-    return 1.00 / (1 + exp( -2*(m-3)));
+  // temporary
+  return 1.00;
+    //return 1.00 / (1 + exp( -2*(m-3)));
 }
 
 void HMMCluster::PopulateEmission(const ReadThread& rthread,

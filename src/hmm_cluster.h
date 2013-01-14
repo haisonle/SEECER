@@ -370,17 +370,19 @@ private:
 		    bool fright);
     
     int ExtendLeft(DnaString& core,
-			PositionInfo& pos,
-			Emission* buffer,
-			int buffer_iter,
-			int buffer_length,
-			std::ostream* os);
+		   Cluster& output,
+		   PositionInfo& pos,
+		   Emission* buffer,
+		   int buffer_iter,
+		   int buffer_length,
+		   std::ostream* os);
     int ExtendRight(DnaString& core,
-			 PositionInfo& pos,
-			 Emission* buffer,
-			 int buffer_iter,
-			 int buffer_length,
-			 std::ostream* os);
+		    Cluster& output,
+		    PositionInfo& pos,
+		    Emission* buffer,
+		    int buffer_iter,
+		    int buffer_length,
+		    std::ostream* os);
     int AssignReads(int cluster_id,
 		    DnaString& core,
 		    PositionInfo& pos,

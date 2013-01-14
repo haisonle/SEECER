@@ -109,6 +109,24 @@ void help_msg() {
     fprintf(stderr, "%s\n", msg);
 }
 
+void writeContig(const HMMParameters& param, std::ofstream &f,
+		 const DnaString& contig, Cluster& res) {
+  if (f.is_open() && static_cast<int>(length(contig)) > param.k) {
+    f << length(contig) << "\t" << contig << "\t" << res.rthread.reads.size() << "\t";
+
+    for (std::deque<CoreCount>::iterator it = res.core_prob.begin();
+	 it != res.core_prob.end(); ++it) {
+      f << it->val[0] << "\t";
+      f << it->val[1] << "\t";
+      f << it->val[2] << "\t";
+      f << it->val[3] << "\t";
+      f << it->entropy << "\t";
+    }
+    
+    f << std::endl;
+  }
+}
+
 int correct_errors(int argc, char * argv[])
 {
     HMMParameters param;
@@ -161,6 +179,7 @@ int correct_errors(int argc, char * argv[])
     char *interestingFn = NULL;
     char *stats_suffix = NULL;
     char *ctrlFn = NULL;
+    const char *contigFn = NULL;
 
     const char *outputFn = static_cast<const char*>("corrected_reads.fa");
     int startSeed = -1;
@@ -169,6 +188,8 @@ int correct_errors(int argc, char * argv[])
     /* Parsing options */
     int c;
     opterr = 0;
+
+    std::ofstream fContig;
 
     while (1) {
 	static struct option long_options[] =
@@ -195,6 +216,7 @@ int correct_errors(int argc, char * argv[])
 		{"dbReads", required_argument, 0, '4'},
 		{"stats_suffix", required_argument, 0, 'S'},
 		{"ctrlFn", required_argument, 0, 'c'},
+		{"contigFn", required_argument, 0, 'G'},
 		{0, 0, 0, 0}
 	    };
 	int option_index = 0;
@@ -272,6 +294,14 @@ int correct_errors(int argc, char * argv[])
 	case 'o':
 	    outputFn = optarg;
 	    break;
+	case 'G':
+	    contigFn = optarg;
+	    fContig.open(contigFn);
+	    if (!fContig.is_open()) {
+	      std::cerr << "Config file is invalid!!!" << std::endl;
+	      return -1;
+	    }
+	    break;
 	case 'c':
 	    ctrlFn = optarg;
 	    break;
@@ -325,6 +355,7 @@ int correct_errors(int argc, char * argv[])
 	finder = new QGramHashMapReadFinder(fragStore, stats_keeper, param.k);	
     }
 
+
 #if DEBUG
     if (interestingFn) {
 	stats_keeper.ReadIReads(interestingFn);
@@ -345,6 +376,9 @@ int correct_errors(int argc, char * argv[])
     if (endSeed < 0) {
 	endSeed = length(fragStore.readSeqStore);
     }
+
+    std::cerr << "Total " << length(fragStore.readSeqStore) << " reads." << std::endl;
+
 
     int n_clusters = 0;
 
@@ -367,7 +401,13 @@ int correct_errors(int argc, char * argv[])
 		bool interesting_c =
 		  cluster.BuildCluster(fragStore.readSeqStore[ridx], res, ridx, debugPath);
 		cluster.ReportPerf();
+#pragma omp critical
+		{
+		  writeContig(param, fContig, res.core, res);
+		}
+		
 		n_clusters++;
+		
 		
 		// dummy
 		interesting_c = interesting_c;
@@ -393,7 +433,8 @@ int correct_errors(int argc, char * argv[])
 			}
 		    }
 		
-#endif    
+#endif
+   
 	    } else {
 	        if (ridx % 1000 == 0) {
 		    char otime[256];
@@ -418,9 +459,11 @@ int correct_errors(int argc, char * argv[])
 #pragma omp atomic
 		skipped++;
 	      }
+
+
+	    }
 	}
-	}
-	}
+    }
     
     stats_keeper.PrintStats();
 
@@ -468,6 +511,8 @@ int correct_errors(int argc, char * argv[])
     }
     
     delete finder;
+
+    fContig.close();
 
     return 0;
 }

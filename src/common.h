@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <omp.h>
 
+#include <deque>
 #include <iostream>
 
 #include <stdint.h>
@@ -146,13 +147,31 @@ public:
     }
 };
 
+typedef struct count_ {
+  double val[4];
+  double entropy;
+
+  void Assign(double v[5], double entropy) {
+    val[0] = v[0];
+    val[1] = v[1];
+    val[2] = v[2];
+    val[3] = v[3];
+    this->entropy = entropy;
+  }
+} CoreCount;
+
 typedef struct cluster_ {
     DnaString core;
     ReadThread rthread;
+    
     void clear() {
 	rthread.clear();
 	::clear(core);
     }
+
+  // for printing out
+  std::deque<CoreCount> core_prob;
+
 } Cluster;
 
 
