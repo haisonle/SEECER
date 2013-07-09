@@ -40,6 +40,10 @@ using namespace std;
 #define DEBUG 0
 #endif
 
+#ifndef CORRECTIONS_SAVING
+#define CORRECTIONS_SAVING 1
+#endif
+
 #ifndef _DEBUG_XX_
 #define _DEBUG_XX_ 0
 #endif
@@ -102,7 +106,8 @@ HMMCluster::HMMCluster(HMMParameters *param,
       alpha_array((Val*) malloc((max_read_length+1) * sizeof(Val))),
       beta_array((Val*) malloc((max_read_length+1) * sizeof(Val))),
       trace_array((TraceElem*) malloc((max_read_length+1) * sizeof(TraceElem))),
-      interesting_c(false) {
+      interesting_c(false),
+      corrected_pos_os(NULL) {
 
 
     for (int i = 0; i < TOTAL_OFFSETS; ++i) {
@@ -784,7 +789,7 @@ bool HMMCluster::Viterbi(DnaString& core,
 	    append(corrected, core[idx - pos.core_emission_offset]);
 	
 #if CORRECTIONS_SAVING    
-	    e.pos = i;
+	    e.pos = i - 1;
 	    e.a = '-';
 	    e.b = core[idx - pos.core_emission_offset];
 
@@ -808,7 +813,7 @@ bool HMMCluster::Viterbi(DnaString& core,
 #if CORRECTIONS_SAVING
 	    e.pos = i - 1;
 	    e.a = '+';
-	    e.b = core[idx - pos.core_emission_offset];
+	    e.b = read[i - 1];
 
 	    corrections.push_back(e);
 #endif
@@ -1874,6 +1879,39 @@ int HMMCluster::AssignReads(int cluster_id,
 	       g_sub_errors += sub_errors;
 	       g_ins_errors += ins_errors;
 	       g_del_errors += del_errors;
+
+#if CORRECTIONS_SAVING // output the positions of correction
+#pragma omp critical
+	{
+	       if (corrected_pos_os) {
+		 for (vector<Error>::const_iterator it = corrections.begin();
+		      it != corrections.end();
+		      ++it) {
+
+		   if (rthread.reads[i] < 0) {
+		     *corrected_pos_os << -rthread.reads[i] - 1 << "\t";
+		     *corrected_pos_os << length(read) - 1 - it->pos << "\t";
+		   } else {
+		     *corrected_pos_os << rthread.reads[i] << "\t";
+		     *corrected_pos_os << it->pos << "\t";
+		   }
+		   if (it->a == '-') {
+		     // Deletion
+		     *corrected_pos_os << "D\t" << it->b;
+		   } else if (it->a == '+') {
+		     *corrected_pos_os << "I\t" << it->b;
+		   } else {
+		     *corrected_pos_os << "M\t" << it->a << it->b;
+		   }
+		   *corrected_pos_os << std::endl;
+		 }
+
+	       }
+      }
+
+#endif
+	       
+
 	     } else {
 	       collided = true;
 	     }

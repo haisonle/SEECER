@@ -83,16 +83,16 @@ private:
     int* creads_index;
     std::vector<DnaString> corrected_reads;
 
-    int nAcceptedReads;
-    int nCollidedReads;
-    int nCollidedMatchedReads;
-    int nCorrectedReads;
-    int g_sub_errors;
-    int g_ins_errors;
-    int g_del_errors;
+    unsigned int nAcceptedReads;
+    unsigned int nCollidedReads;
+    unsigned int nCollidedMatchedReads;
+    unsigned int nCorrectedReads;
+    unsigned int g_sub_errors;
+    unsigned int g_ins_errors;
+    unsigned int g_del_errors;
 
     
-    int g_nfailures;
+    unsigned int g_nfailures;
     // FOR DEBUG
     std::set<int> interesting_reads;
     

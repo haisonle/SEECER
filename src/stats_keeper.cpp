@@ -104,7 +104,7 @@ bool StatsKeeper::RemoveReads(int cluster_id,
 
     if (__sync_bool_compare_and_swap(&g_hs[read_index], 0, cluster_id + 1)) {
 	if (c != fragStore.readSeqStore[read_index]) {
-#pragma omp critical
+#pragma omp critical (MOD_CORRECTED_READS)
 	    {
 	      corrected_reads.push_back(c);
 	      creads_index[read_index] = corrected_reads.size();
@@ -118,7 +118,14 @@ bool StatsKeeper::RemoveReads(int cluster_id,
 	
         bool matched;
 	if (creads_index[read_index]) {
-	  matched = (corrected_reads[creads_index[read_index] - 1]) == c;
+#pragma omp critical (MOD_CORRECTED_READS)
+	  {
+	    if ( creads_index[read_index] > (int) corrected_reads.size()) {
+	      std::cerr << read_index << " " << creads_index[read_index] - 1 << " " << corrected_reads.size()
+	                << " " << c << std::endl;
+	    }
+	    matched = (corrected_reads[creads_index[read_index] - 1]) == c;
+	  }
 	} else {
 	  matched = (fragStore.readSeqStore[read_index] == c);
 	}

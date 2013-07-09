@@ -174,12 +174,13 @@ int correct_errors(int argc, char * argv[])
     param.failure_th = 3;
     param.emit_delta = 0.1;
 
-    char *kmerFn = NULL;
-    char *debugPath = NULL;
-    char *interestingFn = NULL;
-    char *stats_suffix = NULL;
-    char *ctrlFn = NULL;
+    const char *kmerFn = NULL;
+    const char *debugPath = NULL;
+    const char *interestingFn = NULL;
+    const char *stats_suffix = NULL;
+    const char *ctrlFn = NULL;
     const char *contigFn = NULL;
+    const char *corPosFn = NULL;
 
     const char *outputFn = static_cast<const char*>("corrected_reads.fa");
     int startSeed = -1;
@@ -190,6 +191,7 @@ int correct_errors(int argc, char * argv[])
     opterr = 0;
 
     std::ofstream fContig;
+    std::ofstream fCorPos;
 
     while (1) {
 	static struct option long_options[] =
@@ -217,6 +219,7 @@ int correct_errors(int argc, char * argv[])
 		{"stats_suffix", required_argument, 0, 'S'},
 		{"ctrlFn", required_argument, 0, 'c'},
 		{"contigFn", required_argument, 0, 'G'},
+		{"corPosFn", required_argument, 0, 'P'},
 		{0, 0, 0, 0}
 	    };
 	int option_index = 0;
@@ -274,7 +277,7 @@ int correct_errors(int argc, char * argv[])
 	    param.do_read_thinning = true;
 	    break;
 	case 'r':
-	    param.reuse_reads = true;
+	    param.reuse_reads = false;
 	    break;
 	case 'f':
 	    param.restrict_failures = false;
@@ -299,6 +302,14 @@ int correct_errors(int argc, char * argv[])
 	    fContig.open(contigFn);
 	    if (!fContig.is_open()) {
 	      std::cerr << "Config file is invalid!!!" << std::endl;
+	      return -1;
+	    }
+	    break;
+	case 'P':
+	    corPosFn = optarg;
+	    fCorPos.open(corPosFn);
+	    if (!fCorPos.is_open()) {
+	      std::cerr << "File to store corrected positions is invalid!!!" << std::endl;
 	      return -1;
 	    }
 	    break;
@@ -344,6 +355,44 @@ int correct_errors(int argc, char * argv[])
 	help_msg();
 	return -1;
     }
+
+#if 0
+
+    std::ifstream res("corPos.txt");
+    char s[256];
+    while (!res.eof()) {
+      res.getline(s, 256);
+      int a,b;
+      char c,d;
+      
+      sscanf(s, "%d\t%d\t%c\t%c", &a, &b, &c, &d);
+      
+      assert((unsigned int) a < length(fragStore.readSeqStore));
+
+      switch (c) {
+      case 'M':
+	fprintf(stderr, "%d %d M %c%c\n", a, b, (char) fragStore.readSeqStore[a][b], d);
+	break;
+      case 'I':
+	fprintf(stderr, "%d %d I %c\n", a, b, d);
+	break;
+      case 'D':
+	fprintf(stderr, "%d %d D %c\n", a, b, (char) fragStore.readSeqStore[a][b-1]);
+	break;
+      default:
+	break;
+      }
+
+
+      
+
+    }
+    
+
+
+    res.close();
+
+#endif
 
     StatsKeeper stats_keeper(&param, fragStore);
 
@@ -394,6 +443,11 @@ int correct_errors(int argc, char * argv[])
 	      HMMCluster cluster(&param, *finder, stats_keeper,
 				 finder->GetMaximumReadLength(),
 				 Emission::alpha, Emission::m, fragStore);
+
+	      if (corPosFn) {
+		cluster.setCorrectedPoOStream(&fCorPos);
+	      }
+
 	      if (stats_keeper.FreeRead(ridx) && !DiscardRead(fragStore.readSeqStore[ridx])) {
 		
 		Cluster res;
@@ -513,6 +567,7 @@ int correct_errors(int argc, char * argv[])
     delete finder;
 
     fContig.close();
+    fCorPos.close();
 
     return 0;
 }

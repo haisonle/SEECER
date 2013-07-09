@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -43,6 +44,25 @@ void closeFiles(vector<FILE*>& files) {
   }
 }
 
+
+bool ReadNextLines(FILE* f, char* id, char* seq) {
+    assert(!feof(f));
+    fgets(id, 256, f);
+    if (id[0] == '+') {
+	if (!fgets(id, 256, f)) return false;
+	if (!fgets(id, 256, f)) return false;
+    }
+    int i = 0;
+    while (id[i+1] != '\0' && id[i+1] != '\n') {
+	id[i] = id[i+1];
+	i++;
+    }
+    id[i] = '\0';
+    fscanf(f, "%[^\n]\n", seq);
+
+    return true;
+}
+
 int main(int argc, char* argv[]) {
 
   vector<FILE*> origs;
@@ -75,17 +95,14 @@ int main(int argc, char* argv[]) {
 	    int rridx = ridx;
 	    bool b = false;
 	    do {
-	      fscanf(origs[fi], "%c%[^\n]\n%[^\n]\n", &a, id, seq);
-
-		if (a == '+') {
-		  fscanf(origs[fi], "%c%[^\n]\n%[^\n]\n", &a, id, seq);
-		}
-
-		b = (rid == rridx);
-		if (!b) {
+		assert(ReadNextLines(origs[fi], id, seq));
+		fprintf(stderr, "READ %s\t%s\n", id, seq);
+	      
+	      b = (rid == rridx);
+	      if (!b) {
 		  fprintf(output[fi], ">%s\n%s\n", id, seq);
-		}
-		rridx++;
+	      }
+	      rridx++;
 	    } while (!b);
 
 	    fprintf(output[fi], ">%s %s\n%s\n", id, an, seqc);
@@ -97,10 +114,9 @@ int main(int argc, char* argv[]) {
     
     for (int fi = 0; fi < n; ++fi) {
       while (!feof(origs[fi])) {
-	fscanf(origs[fi], "%c%[^\n]\n%[^\n]\n", &a, id, seq);
-	if (a != '+') {
-	    fprintf(output[fi], ">%s\n%s\n", id, seq);
-	}
+	  if (ReadNextLines(origs[fi], id, seq)) {
+	      fprintf(output[fi], ">%s\n%s\n", id, seq);
+	  }
 
       }
     }

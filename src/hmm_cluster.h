@@ -274,6 +274,8 @@ private:
 
     bool interesting_c;
 
+    std::ostream* corrected_pos_os;
+
     int ToAllEmissionIndex(int i, int o);
     int ToEmissionBufferIndex(int i, int o,
 			      int buffer_iter,
@@ -454,6 +456,10 @@ public:
 			int buffer_length,
 			const DnaString& read,
 			int estAlignment);
+
+    void setCorrectedPoOStream(std::ostream* os) {
+      corrected_pos_os = os;
+    }
 };
 
 

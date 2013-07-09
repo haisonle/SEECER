@@ -180,6 +180,6 @@ if [ $SeecerStep -le 4 ];
 then
     echo "++ Step 4: Cleaning and putting back original read IDs ... We finish soon!"
     ${BINDIR}/replace_ids $TMPDIR/corrected.fasta $Reads $Reads_N $Reads_O
-    rm $TMPDIR/corrected.fasta
+#    rm $TMPDIR/corrected.fasta
 fi;
 
